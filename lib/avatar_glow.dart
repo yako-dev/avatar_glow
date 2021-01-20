@@ -15,12 +15,12 @@ class AvatarGlow extends StatefulWidget {
   final Curve curve;
   final bool showTwoGlows;
   final Color glowColor;
-  final Duration startDelay;
+  final Duration? startDelay;
 
   const AvatarGlow({
-    Key key,
-    @required this.child,
-    @required this.endRadius,
+    Key? key,
+    required this.child,
+    required this.endRadius,
     this.shape = BoxShape.circle,
     this.duration = const Duration(milliseconds: 2000),
     this.repeat = true,
@@ -38,21 +38,19 @@ class AvatarGlow extends StatefulWidget {
 
 class _AvatarGlowState extends State<AvatarGlow>
     with SingleTickerProviderStateMixin {
-  Animation<double> smallDiscAnimation;
-  Animation<double> bigDiscAnimation;
-  Animation<double> alphaAnimation;
-  AnimationController controller;
-  void Function(AnimationStatus status) listener;
+  late Animation<double> smallDiscAnimation;
+  late Animation<double> bigDiscAnimation;
+  late Animation<double> alphaAnimation;
+  late AnimationController controller = AnimationController(
+    duration: widget.duration,
+    vsync: this,
+  );
+
+  void Function(AnimationStatus status)? listener;
 
   @override
   void initState() {
-    controller = AnimationController(
-      duration: widget.duration,
-      vsync: this,
-    );
-
     _createAnimation();
-
     if (widget.animate) {
       _startAnimation();
     }
@@ -80,7 +78,7 @@ class _AvatarGlowState extends State<AvatarGlow>
   }
 
   void _createAnimation() {
-    final Animation curve = CurvedAnimation(
+    final Animation<double> curve = CurvedAnimation(
       parent: controller,
       curve: widget.curve,
     );
@@ -97,7 +95,9 @@ class _AvatarGlowState extends State<AvatarGlow>
 
     alphaAnimation = Tween(begin: 0.30, end: 0.0).animate(controller);
 
-    controller.removeStatusListener(listener);
+    if (listener != null) {
+      controller.removeStatusListener(listener!);
+    }
 
     listener = (_) async {
       if (controller.status == AnimationStatus.completed) {
@@ -110,7 +110,7 @@ class _AvatarGlowState extends State<AvatarGlow>
       }
     };
 
-    controller.addStatusListener(listener);
+    controller.addStatusListener(listener!);
   }
 
   @override
@@ -121,7 +121,7 @@ class _AvatarGlowState extends State<AvatarGlow>
 
   void _startAnimation() async {
     if (widget.startDelay != null) {
-      await Future.delayed(widget.startDelay);
+      await Future.delayed(widget.startDelay!);
       if (mounted) controller.forward();
     } else {
       controller.forward();
@@ -129,8 +129,8 @@ class _AvatarGlowState extends State<AvatarGlow>
   }
 
   void _stopAnimation() async {
-    controller?.reset();
-    controller?.stop();
+    controller.reset();
+    controller.stop();
   }
 
   @override
@@ -183,7 +183,7 @@ class _AvatarGlowState extends State<AvatarGlow>
                       },
                     )
                   : const SizedBox(height: 0.0, width: 0.0),
-              widgetChild,
+              widgetChild ?? Text('No child'),
             ],
           ),
         );

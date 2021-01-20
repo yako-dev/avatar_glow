@@ -1,11 +1,11 @@
 name: avatar_glow
 description: A Flutter package providing a Avatar Glow Widget with cool background glowing animation.
-version: 1.2.0
+version: 2.0.0-nullsafety.0
 author: Ayush P Gupta <ayushpguptaapg@gmail.com>
 homepage: https://github.com/apgapg/avatar_glow
 
 environment:
-  sdk: ">=2.1.0 <3.0.0"
+  sdk: ">=2.12.0-0 <3.0.0"
 
 dependencies:
   flutter:
