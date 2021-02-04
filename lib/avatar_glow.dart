@@ -16,6 +16,8 @@ class AvatarGlow extends StatefulWidget {
   final bool showTwoGlows;
   final Color glowColor;
   final Duration startDelay;
+  final double fromOpacityValue;
+  final double toOpacityValue;
 
   const AvatarGlow({
     Key key,
@@ -30,6 +32,8 @@ class AvatarGlow extends StatefulWidget {
     this.showTwoGlows = true,
     this.glowColor = Colors.white,
     this.startDelay,
+    this.fromOpacityValue = 0.3,
+    this.toOpacityValue = 0.0,
   }) : super(key: key);
 
   @override
@@ -95,7 +99,9 @@ class _AvatarGlowState extends State<AvatarGlow>
       end: (widget.endRadius * 2),
     ).animate(curve);
 
-    alphaAnimation = Tween(begin: 0.30, end: 0.0).animate(controller);
+    alphaAnimation =
+        Tween(begin: widget.fromOpacityValue, end: widget.toOpacityValue)
+            .animate(controller);
 
     controller.removeStatusListener(listener);
 
