@@ -15,14 +15,14 @@ class AvatarGlow extends StatefulWidget {
   final Curve curve;
   final bool showTwoGlows;
   final Color glowColor;
-  final Duration startDelay;
+  final Duration? startDelay;
   final double fromOpacityValue;
   final double toOpacityValue;
 
   const AvatarGlow({
-    Key key,
-    @required this.child,
-    @required this.endRadius,
+    Key? key,
+    required this.child,
+    required this.endRadius,
     this.shape = BoxShape.circle,
     this.duration = const Duration(milliseconds: 2000),
     this.repeat = true,
@@ -42,37 +42,46 @@ class AvatarGlow extends StatefulWidget {
 
 class _AvatarGlowState extends State<AvatarGlow>
     with SingleTickerProviderStateMixin {
-  Animation<double> smallDiscAnimation;
-  Animation<double> bigDiscAnimation;
-  Animation<double> alphaAnimation;
-  AnimationController controller;
-  void Function(AnimationStatus status) listener;
+  late final controller = AnimationController(
+    duration: widget.duration,
+    vsync: this,
+  );
+  late final _curve = CurvedAnimation(
+    parent: controller,
+    curve: widget.curve,
+  );
+  late final Animation<double> _smallDiscAnimation = Tween(
+    begin: (widget.endRadius * 2) / 6,
+    end: (widget.endRadius * 2) * (3 / 4),
+  ).animate(_curve);
+  late final Animation<double> _bigDiscAnimation = Tween(
+    begin: 0.0,
+    end: (widget.endRadius * 2),
+  ).animate(_curve);
+  late final Animation<double> _alphaAnimation =
+      Tween(begin: widget.fromOpacityValue, end: widget.toOpacityValue)
+          .animate(controller);
+
+  late void Function(AnimationStatus status) _statusListener = (_) async {
+    if (controller.status == AnimationStatus.completed) {
+      await Future.delayed(widget.repeatPauseDuration);
+      if (mounted && widget.repeat && widget.animate) {
+        controller.reset();
+        controller.forward();
+      }
+    }
+  };
 
   @override
   void initState() {
-    controller = AnimationController(
-      duration: widget.duration,
-      vsync: this,
-    );
-
-    _createAnimation();
-
+    super.initState();
     if (widget.animate) {
       _startAnimation();
     }
-    super.initState();
   }
 
   @override
   void didUpdateWidget(AvatarGlow oldWidget) {
-    // Fields which will trigger new animation values
-    if (widget.duration != oldWidget.duration ||
-        widget.curve != oldWidget.curve ||
-        widget.endRadius != oldWidget.endRadius) {
-      controller.duration = widget.duration;
-      _createAnimation();
-    }
-
     if (widget.animate != oldWidget.animate) {
       if (widget.animate) {
         _startAnimation();
@@ -83,76 +92,38 @@ class _AvatarGlowState extends State<AvatarGlow>
     super.didUpdateWidget(oldWidget);
   }
 
-  void _createAnimation() {
-    final Animation curve = CurvedAnimation(
-      parent: controller,
-      curve: widget.curve,
-    );
-
-    smallDiscAnimation = Tween(
-      begin: (widget.endRadius * 2) / 6,
-      end: (widget.endRadius * 2) * (3 / 4),
-    ).animate(curve);
-
-    bigDiscAnimation = Tween(
-      begin: 0.0,
-      end: (widget.endRadius * 2),
-    ).animate(curve);
-
-    alphaAnimation =
-        Tween(begin: widget.fromOpacityValue, end: widget.toOpacityValue)
-            .animate(controller);
-
-    controller.removeStatusListener(listener);
-
-    listener = (_) async {
-      if (controller.status == AnimationStatus.completed) {
-        await Future.delayed(widget.repeatPauseDuration);
-
-        if (mounted && widget.repeat && widget.animate) {
-          controller.reset();
-          controller.forward();
-        }
-      }
-    };
-
-    controller.addStatusListener(listener);
-  }
-
-  @override
-  void dispose() {
-    controller.dispose();
-    super.dispose();
-  }
-
   void _startAnimation() async {
+    controller.addStatusListener(_statusListener);
     if (widget.startDelay != null) {
-      await Future.delayed(widget.startDelay);
-      if (mounted) controller.forward();
-    } else {
+      await Future.delayed(widget.startDelay!);
+    }
+    if (mounted) {
+      controller.reset();
       controller.forward();
     }
   }
 
   void _stopAnimation() async {
-    controller?.reset();
-    controller?.stop();
+    controller.removeStatusListener(_statusListener);
   }
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: alphaAnimation,
+      animation: _alphaAnimation,
       child: widget.child,
       builder: (context, widgetChild) {
         final decoration = BoxDecoration(
           shape: widget.shape,
           // If the user picks a curve that goes below 0 or above 1
           // this opacity will have unexpected effects without clamping
-          color: widget.glowColor
-              .withOpacity(alphaAnimation.value.clamp(0.0, 1.0)),
+          color: widget.glowColor.withOpacity(
+            _alphaAnimation.value.clamp(
+              0.0,
+              1.0,
+            ),
+          ),
         );
-
         return Container(
           height: widget.endRadius * 2,
           width: widget.endRadius * 2,
@@ -160,40 +131,49 @@ class _AvatarGlowState extends State<AvatarGlow>
             alignment: Alignment.center,
             children: <Widget>[
               AnimatedBuilder(
-                animation: bigDiscAnimation,
+                animation: _bigDiscAnimation,
                 builder: (context, widget) {
                   // If the user picks a curve that goes below 0,
                   // this will throw without clamping
-                  final size =
-                      bigDiscAnimation.value.clamp(0.0, double.infinity);
-
+                  final num size = _bigDiscAnimation.value.clamp(
+                    0.0,
+                    double.infinity,
+                  );
                   return Container(
-                    height: size,
-                    width: size,
+                    height: size as double?,
+                    width: size as double?,
                     decoration: decoration,
                   );
                 },
               ),
               widget.showTwoGlows
                   ? AnimatedBuilder(
-                      animation: smallDiscAnimation,
+                      animation: _smallDiscAnimation,
                       builder: (context, widget) {
-                        final size = smallDiscAnimation.value
-                            .clamp(0.0, double.infinity);
+                        final num size = _smallDiscAnimation.value.clamp(
+                          0.0,
+                          double.infinity,
+                        );
 
                         return Container(
-                          height: size,
-                          width: size,
+                          height: size as double?,
+                          width: size as double?,
                           decoration: decoration,
                         );
                       },
                     )
                   : const SizedBox(height: 0.0, width: 0.0),
-              widgetChild,
+              widgetChild!,
             ],
           ),
         );
       },
     );
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
   }
 }
